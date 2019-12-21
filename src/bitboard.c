@@ -34,6 +34,9 @@ You can find the GNU General Public License at http://www.gnu.org/licenses/
 #undef USE_BBIX_STRUCT
 #endif
 
+// use gcc builtins if USE_BUILTINS is defined
+#define USE_BUILTINS
+
 // Bitboards
 U64     bb_square[64];           // bitboard for each board square
 U64     bb_clear[64];            // bitboard used to clear bits
@@ -195,7 +198,9 @@ U64 square_color_bb(int index)
 //-------------------------------------------------------------------------------------------------
 int bb_first(BBIX bbix)
 {
-#if defined(USE_BBIX_STRUCT)
+#if defined(USE_BUILTINS)
+    return bbix.u64 ? __builtin_clzll(bbix.u64) : -1;
+#elif defined(USE_BBIX_STRUCT)
     if (bbix.u32[1]) {
         if (bbix.u16[3])
             return (int)first_index_table[0][bbix.u16[3]];
@@ -224,7 +229,9 @@ int bb_first(BBIX bbix)
 //-------------------------------------------------------------------------------------------------
 int bb_last(BBIX bbix)
 {
-#ifdef USE_BBIX_STRUCT
+#if defined(USE_BUILTINS)
+    return bbix.u64 ? 63 - __builtin_ctzll(bbix.u64) : -1;
+#elif defined(USE_BBIX_STRUCT)
     if (bbix.u32[0]) {
         if (bbix.u16[0])
             return (int)last_index_table[3][bbix.u16[0]];
@@ -253,7 +260,9 @@ int bb_last(BBIX bbix)
 //-------------------------------------------------------------------------------------------------
 int bb_count(BBIX bbix)
 {
-#ifdef USE_BBIX_STRUCT
+#if defined(USE_BUILTINS)
+    return __builtin_popcountll(bbix.u64);
+#elif defined(USE_BBIX_STRUCT)
     return (int)(bit_count_table[bbix.u16[0]] + bit_count_table[bbix.u16[1]] +
                  bit_count_table[bbix.u16[2]] + bit_count_table[bbix.u16[3]]);
 #else
@@ -269,10 +278,14 @@ int bb_count(BBIX bbix)
 //-------------------------------------------------------------------------------------------------
 int bb_count_u64(U64 bb)
 {
+#ifdef USE_BUILTINS
+    return __builtin_popcountll(bb);
+#else
     return bit_count_table[(bb & (U64)0xFFFF000000000000) >> 48] +
            bit_count_table[(bb & (U64)0x0000FFFF00000000) >> 32] +
            bit_count_table[(bb & (U64)0x00000000FFFF0000) >> 16] +
            bit_count_table[(bb & (U64)0x000000000000FFFF)];
+#endif
 }
 
 
